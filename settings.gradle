@@ -1,0 +1,6 @@
+
+include 'flink-htm-streaming-java'
+include 'flink-htm-streaming-scala'
+include 'flink-htm-examples'
+
+rootProject.name = 'flink-htm'

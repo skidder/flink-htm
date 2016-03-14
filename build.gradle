@@ -1,0 +1,16 @@
+allprojects {
+    apply plugin: 'idea'
+}
+
+subprojects {
+    repositories {
+        jcenter()
+        mavenCentral()
+    }
+}
+
+idea {
+  module {
+    inheritOutputDirs = true
+  }
+}

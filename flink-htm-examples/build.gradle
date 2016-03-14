@@ -1,0 +1,30 @@
+apply plugin: 'scala'
+
+group = 'org.numenta'
+version = '0.1-SNAPSHOT'
+archivesBaseName = 'flink-htm-examples_2.11'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'flink-htm-examples', 'Implementation-Version': '0.1-SNAPSHOT'
+    }
+}
+
+dependencies {
+    compile project(':flink-htm-streaming-java')
+    compile project(':flink-htm-streaming-scala')
+    
+    // scala
+    compile 'org.scala-lang:scala-library:2.11.7'
+
+    // htm.java
+    compile 'org.numenta:htm.java:0.6.5'
+
+    // flink
+    compile 'org.apache.flink:flink-scala_2.11:1.0.0'
+    compile 'org.apache.flink:flink-streaming-scala_2.11:1.0.0'
+    compile 'de.javakaffee:kryo-serializers:0.37'
+}
