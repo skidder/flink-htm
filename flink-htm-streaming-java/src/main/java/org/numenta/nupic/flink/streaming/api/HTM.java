@@ -28,7 +28,7 @@ public class HTM {
      * @param <K>            Type of the key in case of a KeyedStream
      * @return Resulting HTM stream
      */
-    public static <T, K> HTMStream<T> network(DataStream<T> input, NetworkFactory<T> networkFactory) {
+    public static <T, K> HTMStream<T> learn(DataStream<T> input, NetworkFactory<T> networkFactory) {
         final boolean isProcessingTime = input.getExecutionEnvironment().getStreamTimeCharacteristic() == TimeCharacteristic.ProcessingTime;
 
         final DataStream<Inference2<T>> inferenceStream;
