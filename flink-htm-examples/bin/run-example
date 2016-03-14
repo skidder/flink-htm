@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+FWDIR="$(cd "`dirname "$0"`"/..; pwd)"
+export EXAMPLES_DIR="$FWDIR"
+
+export PARALLELISM="1"
+while getopts ":p:" opt; do
+  case $opt in
+    p)
+      export PARALLELISM=${OPTARG}
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+  shift $((OPTIND-1))
+done
+
+if [ -n "$1" ]; then
+  EXAMPLE_CLASS="$1"
+  shift
+else
+  echo "Usage: ./bin/run-example <example-class> [example-args]" 1>&2
+  echo "  - can use abbreviated example class name relative to org.numenta.nupic.flink.streaming.examples" 1>&2
+  echo "     (e.g. hotgym.Demo, traffic.Demo, waterlevels.Demo)" 1>&2
+  exit 1
+fi
+
+if [ -n $FLINK_HOME ]; then
+  PATH=$FLINK_HOME/bin:$PATH
+fi
+
+if ! [ -x "$(command -v flink)" ]; then
+  echo 'Error: flink is not available; please ensure that Flink 1.0.x is on the PATH, or that FLINK_HOME is set.' >&2
+  exit
+fi
+
+if [ -f "$FWDIR/RELEASE" ]; then
+  JAR_PATH="${FWDIR}/lib"
+else
+  JAR_PATH="${EXAMPLES_DIR}/build/libs"
+fi
+
+for f in "${JAR_PATH}"/flink-htm-examples_2.11-*-all.jar; do
+  if [[ ! -e "$f" ]]; then
+    echo "Failed to find the examples assembly in $FWDIR/lib or $FWDIR/build/libs" 1>&2
+    echo "You need to build the examples before running this program" 1>&2
+    exit 1
+  fi
+  FLINK_EXAMPLES_JAR="$f"
+done
+
+export FLINK_EXAMPLES_JAR
+
+if [[ ! $EXAMPLE_CLASS == org.numenta.nupic.flink.streaming.examples* ]]; then
+  EXAMPLE_CLASS="org.numenta.nupic.flink.streaming.examples.$EXAMPLE_CLASS"
+fi
+
+exec flink run \
+  --parallelism $PARALLELISM \
+  --class $EXAMPLE_CLASS \
+  "$FLINK_EXAMPLES_JAR" \
+  "$@"

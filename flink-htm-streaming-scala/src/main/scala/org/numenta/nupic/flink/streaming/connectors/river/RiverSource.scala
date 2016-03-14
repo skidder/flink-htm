@@ -10,7 +10,7 @@ import org.apache.flink.api.common.typeutils.CompositeType
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.runtime.operators.sort.MergeIterator
 import org.apache.flink.streaming.api.checkpoint.Checkpointed
-import org.apache.flink.streaming.api.functions.source.RichSourceFunction
+import org.apache.flink.streaming.api.functions.source.{RichParallelSourceFunction, RichSourceFunction}
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.streaming.api.watermark.Watermark
 import org.apache.flink.streaming.util.FieldAccessor
@@ -43,7 +43,7 @@ class RiverSource[T >: Null <: AnyRef: TypeInformation : ClassTag](
     river: String,
     since: Option[DateTime] = None,
     streamIds: Option[Seq[String]] = None)
-  extends RichSourceFunction[T] with Checkpointed[RiverSourceCheckpointState] { source =>
+  extends RichParallelSourceFunction[T] with Checkpointed[RiverSourceCheckpointState] { source =>
 
   private val LOG: Logger = LoggerFactory.getLogger(classOf[RiverSource[_]])
 
@@ -100,7 +100,8 @@ class RiverSource[T >: Null <: AnyRef: TypeInformation : ClassTag](
     * The thread which runs the data stream's pump, downloading and emitting ordered elements.
     */
   @transient
-  private var pump: Option[Thread] = None
+  @volatile
+  private var pumpThread: Option[Thread] = None
 
   /**
     * Run the pump, blocking until the data stream is complete.
@@ -111,11 +112,13 @@ class RiverSource[T >: Null <: AnyRef: TypeInformation : ClassTag](
     val keysForThisSubtask = partitions.filter(key =>
       Math.abs(key.hashCode % getRuntimeContext.getNumberOfParallelSubtasks) == getRuntimeContext.getIndexOfThisSubtask)
 
-    // start the pump
-    pump = Some(new Thread(new Pump(keysForThisSubtask, sourceContext)(actorSystem.get)))
-    pump.foreach {pump =>
-      pump.start()
-      pump.join()
+    // run the pump
+    pumpThread = Some(Thread.currentThread())
+    try {
+      val pump = Some(new Pump(keysForThisSubtask, sourceContext)(actorSystem.get))
+      pump.foreach { _.run() }
+    } catch {
+      case e: InterruptedException =>
     }
   }
 
@@ -123,7 +126,7 @@ class RiverSource[T >: Null <: AnyRef: TypeInformation : ClassTag](
     * Cancel execution of the source.
     */
   override def cancel(): Unit = {
-    pump.foreach { _.interrupt() }
+    pumpThread.foreach { _.interrupt() }
   }
 
   /**
@@ -177,16 +180,16 @@ class RiverSource[T >: Null <: AnyRef: TypeInformation : ClassTag](
         element = iterator.next(element)
         if(element != null) {
           sourceContext.getCheckpointLock.synchronized {
-            val timestamp = datetimeAccessor.get(element)
-            assert(lastEventTimestamp <= timestamp.getMillis)
+            val timestamp = datetimeAccessor.get(element).getMillis
+            assert(lastEventTimestamp <= timestamp)
 
-            sourceContext.collectWithTimestamp(element, lastEventTimestamp)
-            sourceContext.emitWatermark(new Watermark(lastEventTimestamp))
+            sourceContext.collectWithTimestamp(element, timestamp)
+            sourceContext.emitWatermark(new Watermark(timestamp))
 
-            lastEventTimestamp = timestamp.getMillis
+            lastEventTimestamp = timestamp
           }
         }
-      } while (element != null && !Thread.currentThread().isInterrupted)
+      } while (!Thread.interrupted() && element != null)
     }
 
     /**

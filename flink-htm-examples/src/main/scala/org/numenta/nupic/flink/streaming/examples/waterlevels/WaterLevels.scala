@@ -14,40 +14,36 @@ import org.numenta.nupic.flink.streaming.connectors.river._
   *
   * Basic demonstration of processing the mo-water-levels data set.
   */
-object Demo extends App {
+object Demo {
+  val DATETIME_FORMATTER = DateTimeFormat.forPattern("YYYY/MM/dd H:mm:ss")
 
-  /**
-    * The command-line arguments as parsed by {@Link ParameterTool}
-    */
-  lazy val appArgs = ParameterTool.fromArgs(this.args)
+  def main(args: Array[String]) {
 
-  def prettyPrint(w: WaterLevel) = (w.streamId, DATETIME_FORMATTER.print(w.datetime), w.Stage, w.Flow)
+    lazy val appArgs = ParameterTool.fromArgs(args)
 
-  private val DATETIME_FORMATTER = DateTimeFormat.forPattern("YYYY/MM/dd H:mm:ss")
+    def prettyPrint(w: WaterLevel) = (w.streamId, DATETIME_FORMATTER.print(w.datetime), w.Stage, w.Flow)
 
-  /**
-    * The configured Flink execution environment.
-    */
-  lazy val env = {
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
-    env.getConfig.setGlobalJobParameters(appArgs)
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.setParallelism(1) // TODO: don't assume local mode
-    env.addDefaultKryoSerializer(classOf[DateTime], classOf[JodaDateTimeSerializer])
-    env
+    lazy val env = {
+      val env = StreamExecutionEnvironment.getExecutionEnvironment
+      env.getConfig.setGlobalJobParameters(appArgs)
+      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+      env.setParallelism(1) // TODO: don't assume local mode
+      env.addDefaultKryoSerializer(classOf[DateTime], classOf[JodaDateTimeSerializer])
+      env
+    }
+
+    val outputPath = appArgs.getRequired("output")
+
+    val source = new RiverSource[WaterLevel]("mo-water-levels")
+    val stream = env.addSource(source)
+
+    stream.map(prettyPrint _).writeAsCsv(s"$outputPath/mowaterlevels-raw.csv", writeMode = WriteMode.OVERWRITE)
+
+    stream.keyBy("streamId").timeWindow(Time.days(1)).max("Flow")
+      .map(prettyPrint _).writeAsCsv(s"$outputPath/mowaterlevels-max-per-day.csv", writeMode = WriteMode.OVERWRITE)
+
+    env.execute("mo-water-levels")
   }
-
-  val source = new RiverSource[WaterLevel]("mo-water-levels") //("nyc-traffic")
-  val stream = env.addSource(source)
-  stream.map(prettyPrint _).writeAsCsv("build/output/mowaterlevels-raw.csv", writeMode = WriteMode.OVERWRITE)
-
-  stream.keyBy("streamId").timeWindow(Time.days(1)).max("Flow")
-    .map(prettyPrint _).writeAsCsv("build/output/mowaterlevels-max-per-day.csv", writeMode = WriteMode.OVERWRITE)
-
-  val maxFlowPerMonth = stream.keyBy("streamId").timeWindow(Time.days(1)).maxBy("Flow")
-  maxFlowPerMonth.map(prettyPrint _).writeAsCsv("build/output/mowaterlevels-monthly.csv", writeMode = WriteMode.OVERWRITE)
-
-  env.execute("mo-water-levels")
 }
 
 case class WaterLevel(streamId: String, datetime: DateTime, Stage: Double, Flow: Double)

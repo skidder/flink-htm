@@ -25,7 +25,7 @@ class RiverSourceTest extends StreamingMultipleProgramsTestBase {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     env.addDefaultKryoSerializer(classOf[DateTime], classOf[JodaDateTimeSerializer])
-    env.setParallelism(1)
+    env.setParallelism(2)
 
     val source = new RiverSource[TrafficReport]("nyc-traffic", streamIds = Some(Seq("1", "119")))
 

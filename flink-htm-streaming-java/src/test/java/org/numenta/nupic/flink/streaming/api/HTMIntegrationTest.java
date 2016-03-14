@@ -49,7 +49,7 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
         DataStream<TestHarness.DayDemoRecord> input = env.fromCollection(records);
 
         DataStream<Tuple2<Integer,Double>> result = HTM
-                .network(input, new TestHarness.DayDemoNetworkFactory())
+                .learn(input, new TestHarness.DayDemoNetworkFactory())
                 .select(new InferenceSelectFunction<TestHarness.DayDemoRecord, Tuple2<Integer,Double>>() {
                     @Override
                     public Tuple2<Integer,Double> select(Inference2<TestHarness.DayDemoRecord> inference) throws Exception {

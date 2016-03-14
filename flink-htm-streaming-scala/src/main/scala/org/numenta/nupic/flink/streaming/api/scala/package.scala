@@ -18,8 +18,13 @@ package object scala {
     */
   implicit class RichDataStream[T: TypeInformation : ClassTag](dataStream: DataStream[T]) {
 
+    /**
+      * Create an HTM stream based on the current [[DataStream]].
+      * @param network the network to use.
+      * @return an HTM stream.
+      */
     def learn(network: AnyRef => Network): scala.HTMStream[T] = {
-      HTM.network(dataStream, network)
+      HTM.learn(dataStream, network)
     }
   }
 }

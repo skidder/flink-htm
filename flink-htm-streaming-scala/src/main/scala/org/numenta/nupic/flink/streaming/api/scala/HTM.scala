@@ -9,6 +9,9 @@ import org.numenta.nupic.network.Network
 
 import scala.reflect.ClassTag
 
+/**
+  * Convenience methods for HTM streams.
+  */
 object HTM {
 
   private[nupic] def clean[F <: AnyRef](f: F, checkSerializable: Boolean = true)(implicit config: ExecutionConfig): F = {
@@ -23,14 +26,28 @@ object HTM {
     new HTMStream(stream)
   }
 
-  def network[T: TypeInformation : ClassTag](
+  /**
+    * Create an HTM stream based on the current [[DataStream]].
+    * @param input the input data stream to model.
+    * @param factory the factory to create the HTM network.
+    * @tparam T the type of the input elements.
+    * @return an HTM stream to select results.
+    */
+  def learn[T: TypeInformation : ClassTag](
       input: DataStream[T],
       factory: jnupic.NetworkFactory[T]): HTMStream[T] = {
 
-    wrapStream(jnupic.HTM.network(input.javaStream, factory))
+    wrapStream(jnupic.HTM.learn(input.javaStream, factory))
   }
 
-  def network[T: TypeInformation : ClassTag](
+  /**
+    * Create an HTM stream based on the current [[DataStream]].
+    * @param input the input data stream to model.
+    * @param fun the factory to create the HTM network.
+    * @tparam T the type of the input elements.
+    * @return an HTM stream to select results.
+    */
+  def learn[T: TypeInformation : ClassTag](
        input: DataStream[T],
        fun: AnyRef => Network): HTMStream[T] = {
     implicit val config = input.executionConfig
@@ -38,7 +55,7 @@ object HTM {
       val cleanFun = clean(fun)
       def createNetwork(key: AnyRef): Network = cleanFun(key)
     }
-    wrapStream(jnupic.HTM.network(input.javaStream, factory))
+    wrapStream(jnupic.HTM.learn(input.javaStream, factory))
   }
 }
 
@@ -52,11 +69,23 @@ final class HTMStream[T: TypeInformation : ClassTag](jstream: jnupic.HTMStream[T
 
   implicit val config = jstream.getExecutionEnvironment.getConfig
 
+  /**
+    * Select output elements from the HTM stream.
+    * @param selector the select function.
+    * @tparam R the type of the output elements.
+    * @return a new data stream.
+    */
   def select[R: TypeInformation : ClassTag](selector: jnupic.InferenceSelectFunction[T,R]): DataStream[R] = {
     val outType : TypeInformation[R] = implicitly[TypeInformation[R]]
     new DataStream[R](jstream.select(selector, outType))
   }
 
+  /**
+    * Select output elements from the HTM stream.
+    * @param fun the select function.
+    * @tparam R the type of the output elements.
+    * @return a new data stream.
+    */
   def select[R: TypeInformation : ClassTag](fun: jnupic.Inference2[T] => R): DataStream[R] = {
     val outType : TypeInformation[R] = implicitly[TypeInformation[R]]
     val selector: jnupic.InferenceSelectFunction[T,R] = new jnupic.InferenceSelectFunction[T,R] {

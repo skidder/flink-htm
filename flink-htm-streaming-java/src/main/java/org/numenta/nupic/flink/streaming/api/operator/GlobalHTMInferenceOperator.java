@@ -31,7 +31,10 @@ public class GlobalHTMInferenceOperator<IN> extends AbstractHTMInferenceOperator
 
     @Override
     public void open() throws Exception {
+        super.open();
+
         network = networkFactory.createNetwork(null);
+        networkCounter.add(1);
         LOG.info("Created HTM network {}", network.getName());
         initInputFunction();
     }

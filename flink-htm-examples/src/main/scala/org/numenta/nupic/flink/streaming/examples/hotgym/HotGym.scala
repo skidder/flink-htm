@@ -43,64 +43,65 @@ trait HotGymModel {
 /**
   * Demonstrate the hotgym "basic network" as a Flink job.
   */
-object Demo extends App with HotGymModel {
+object Demo extends HotGymModel {
+  def main(args: Array[String]) {
 
-  /**
-    * Parse the hotgym csv file as a datastream of tuples.
-    * @param path
-    */
-  def readCsvFile(path: String): DataStream[Tuple2[DateTime, Double]] = {
-    env.readTextFile(appArgs.getRequired("input"))
-      .map {
-        _.split(",") match {
-          case Array(timestamp, consumption) => (LOOSE_DATE_TIME.parseDateTime(timestamp), consumption.toDouble)
-        }
-      }
-  }
+    val appArgs = ParameterTool.fromArgs(args)
 
-  val appArgs = ParameterTool.fromArgs(this.args)
-
-  val env = {
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
-    env.getConfig.setGlobalJobParameters(appArgs)
-    env.setParallelism(1) // TODO: don't assume local mode
-    env.addDefaultKryoSerializer(classOf[DateTime], classOf[JodaDateTimeSerializer])
-    env
-  }
-
-  val hotGymConsumption: DataStream[Consumption] = readCsvFile(appArgs.getRequired("input"))
-    .map { input => Consumption(input._1, input._2) }
-
-  val inferences = hotGymConsumption
-    .learn(network)
-    .select { inference => inference }
-    .keyBy { _ => None }
-    .mapWithState { (inference, state: Option[Double]) =>
-
-      (Prediction(
-        inference.input.timestamp.toString(LOOSE_DATE_TIME),
-        inference.input.consumption,
-        state match {
-          case Some(prediction) => prediction
-          case None => 0.0
-        },
-        inference.anomalyScore),
-
-        // store the current prediction for the next iteration
-        /*inference.getClassification("consumption").getMostProbableValue(1).asInstanceOf[Double] match {
-          case value if value != 0.0 => Some(value)
-          case _ => Some(state.getOrElse(0.0))
-        }*/
-        Some(inference.input.consumption))
+    val env = {
+      val env = StreamExecutionEnvironment.getExecutionEnvironment
+      env.getConfig.setGlobalJobParameters(appArgs)
+      env.setParallelism(1) // TODO: don't assume local mode
+      env.addDefaultKryoSerializer(classOf[DateTime], classOf[JodaDateTimeSerializer])
+      env
     }
 
-  if (appArgs.has("output")) {
-    inferences.writeAsCsv(appArgs.getRequired("output"), writeMode = WriteMode.OVERWRITE)
-  }
-  else {
-    inferences.print()
-  }
+    /**
+      * Parse the hotgym csv file as a datastream of tuples.
+      */
+    def readCsvFile(path: String): DataStream[Tuple2[DateTime, Double]] = {
+      env.readTextFile(appArgs.getRequired("input"))
+        .map {
+          _.split(",") match {
+            case Array(timestamp, consumption) => (LOOSE_DATE_TIME.parseDateTime(timestamp), consumption.toDouble)
+          }
+        }
+    }
 
-  env.execute("Streaming HotGym")
+    val hotGymConsumption: DataStream[Consumption] = readCsvFile(appArgs.getRequired("input"))
+      .map { input => Consumption(input._1, input._2) }
+
+    val inferences = hotGymConsumption
+      .learn(network)
+      .select { inference => inference }
+      .keyBy { _ => None }
+      .mapWithState { (inference, state: Option[Double]) =>
+
+        (Prediction(
+          inference.input.timestamp.toString(LOOSE_DATE_TIME),
+          inference.input.consumption,
+          state match {
+            case Some(prediction) => prediction
+            case None => 0.0
+          },
+          inference.anomalyScore),
+
+          // store the current prediction for the next iteration
+          /*inference.getClassification("consumption").getMostProbableValue(1).asInstanceOf[Double] match {
+            case value if value != 0.0 => Some(value)
+            case _ => Some(state.getOrElse(0.0))
+          }*/
+          Some(inference.input.consumption))
+      }
+
+    if (appArgs.has("output")) {
+      inferences.writeAsCsv(appArgs.getRequired("output"), writeMode = WriteMode.OVERWRITE)
+    }
+    else {
+      inferences.print()
+    }
+
+    env.execute("hotgym")
+  }
 }
 
