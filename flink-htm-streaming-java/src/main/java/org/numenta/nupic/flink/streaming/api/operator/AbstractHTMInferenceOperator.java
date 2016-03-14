@@ -1,6 +1,9 @@
 package org.numenta.nupic.flink.streaming.api.operator;
 
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.accumulators.AverageAccumulator;
+import org.apache.flink.api.common.accumulators.Histogram;
+import org.apache.flink.api.common.accumulators.IntCounter;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
@@ -37,6 +40,9 @@ public abstract class AbstractHTMInferenceOperator<IN>
 
     protected static final int INITIAL_PRIORITY_QUEUE_CAPACITY = 11;
 
+    protected IntCounter networkCounter;
+    private AverageAccumulator avgProcessingTime;
+
     private final ExecutionConfig executionConfig;
     private final TypeInformation<IN> inputType;
     private final TypeSerializer<IN> inputSerializer;
@@ -63,10 +69,21 @@ public abstract class AbstractHTMInferenceOperator<IN>
         return inputSerializer;
     }
 
+    @Override
+    public void open() throws Exception {
+        super.open();
+
+        networkCounter = getRuntimeContext().getIntCounter("networks");
+        avgProcessingTime = new AverageAccumulator();
+        getRuntimeContext().addAccumulator("processing time (ms)", avgProcessingTime);
+    }
+
     protected abstract Network getInputNetwork() throws Exception;
 
     @Override
     public void processElement(StreamRecord<IN> element) throws Exception {
+        long startTime = System.currentTimeMillis();
+
         if (isProcessingTime) {
             // there can be no out of order elements in processing time
             Network network = getInputNetwork();
@@ -77,6 +94,9 @@ public abstract class AbstractHTMInferenceOperator<IN>
             Network network = getInputNetwork();
             processInput(network, element.getValue(), element.getTimestamp());
         }
+
+        long duration = System.currentTimeMillis() - startTime;
+        avgProcessingTime.add(duration);
     }
 
     @Override
@@ -139,5 +159,4 @@ public abstract class AbstractHTMInferenceOperator<IN>
         Map<String, Object> inputMap = inputFunction.map(record);
         return inputMap;
     }
-
 }

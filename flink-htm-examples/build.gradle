@@ -1,4 +1,7 @@
-apply plugin: 'scala'
+plugins {
+    id 'scala'
+    id 'com.github.johnrengelman.shadow' version '1.2.3'
+}
 
 group = 'org.numenta'
 version = '0.1-SNAPSHOT'
@@ -28,3 +31,40 @@ dependencies {
     compile 'org.apache.flink:flink-streaming-scala_2.11:1.0.0'
     compile 'de.javakaffee:kryo-serializers:0.37'
 }
+
+shadowJar {
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer) {
+        resource = 'reference.conf'
+    }
+
+    dependencies {
+        include(project(':flink-htm-streaming-java'))
+        include(project(':flink-htm-streaming-scala'))
+
+        // this project
+        include(dependency('org.numenta:htm.java:0.6.5'))
+        include(dependency('joda-time:joda-time:2.5'))
+        include(dependency('com.chaschev:chutils:1.4'))
+        include(dependency('net.sf.trove4j:trove4j:3.0.3'))
+        include(dependency('com.fasterxml.jackson.core:jackson-annotations:2.4.4'))
+        include(dependency('com.fasterxml.jackson.core:jackson-core:2.4.4'))
+        include(dependency('com.fasterxml.jackson.core:jackson-databind:2.4.4'))
+        include(dependency('io.reactivex:rxjava:1.0.10'))
+
+        // flink-htm-streaming-scala
+        include(dependency('de.javakaffee:kryo-serializers:0.37'))
+        //include(dependency('org.scala-lang.modules:scala-xml_2.11:1.0.4'))
+        include(dependency('io.spray:spray-client_2.11:1.3.3'))
+        include(dependency('io.spray:spray-can_2.11:1.3.3'))
+        include(dependency('io.spray:spray-io_2.11:1.3.3'))
+        include(dependency('io.spray:spray-util_2.11:1.3.3'))
+        include(dependency('io.spray:spray-http_2.11:1.3.3'))
+        include(dependency('io.spray:spray-httpx_2.11:1.3.3'))
+        include(dependency('org.jvnet.mimepull:mimepull:1.9.5'))
+        include(dependency('org.parboiled:parboiled-scala_2.11:1.1.7'))
+        include(dependency('org.parboiled:parboiled-core:1.1.7'))
+        include(dependency('io.spray:spray-json_2.11:1.3.2'))
+    }
+}
+
+build.dependsOn(shadowJar);

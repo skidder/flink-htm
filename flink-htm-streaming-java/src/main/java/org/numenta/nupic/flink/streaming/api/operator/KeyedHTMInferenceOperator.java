@@ -1,6 +1,7 @@
 package org.numenta.nupic.flink.streaming.api.operator;
 
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.accumulators.IntCounter;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -54,6 +55,8 @@ public class KeyedHTMInferenceOperator<IN, KEY> extends AbstractHTMInferenceOper
 
     @Override
     public void open() throws Exception {
+        super.open();
+
         if (keys == null) {
             keys = new HashSet<KEY>();
         }
@@ -77,6 +80,7 @@ public class KeyedHTMInferenceOperator<IN, KEY> extends AbstractHTMInferenceOper
             network = networkFactory.createNetwork(currentKey);
             networkState.update(network);
 
+            networkCounter.add(1);
             LOG.info("Created HTM network {}", network.getName());
         }
         return network;

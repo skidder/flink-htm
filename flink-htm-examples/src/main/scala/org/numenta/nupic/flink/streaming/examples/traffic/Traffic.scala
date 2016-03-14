@@ -42,37 +42,39 @@ trait TrafficModel {
 /**
   * Traffic Anomaly Tutorial
   */
-object Demo extends App with TrafficModel {
+object Demo extends TrafficModel {
+  def main(args: Array[String]) {
 
-  lazy val appArgs = ParameterTool.fromArgs(this.args)
+    lazy val appArgs = ParameterTool.fromArgs(args)
 
-  lazy val env = {
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.addDefaultKryoSerializer(classOf[DateTime], classOf[JodaDateTimeSerializer])
-    env
+    lazy val env = {
+      val env = StreamExecutionEnvironment.getExecutionEnvironment
+      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+      env.addDefaultKryoSerializer(classOf[DateTime], classOf[JodaDateTimeSerializer])
+      env
+    }
+
+    val nycTraffic = new RiverSource[TrafficReport]("nyc-traffic", streamIds = Some(Seq("1", "204", "446")))
+
+    val investigationInterval = {
+      val formatter = ISODateTimeFormat.basicDate().withZone(nycTraffic.meta.timezone)
+      new Interval(DateTime.parse("20150803", formatter), DateTime.parse("20150804", formatter))
+    }
+
+    val anomalyScores = env
+      .addSource(nycTraffic)
+      .filter { report => report.datetime.isBefore(investigationInterval.getEnd) }
+      .keyBy("streamId")
+      .learn(network)
+      .select(inference => (inference.input, inference.anomalyScore))
+
+    val anomalousRoutes = anomalyScores
+      .filter { anomaly => investigationInterval.contains(anomaly._1.datetime) }
+      .filter { anomaly => anomaly._2 >= 0.9 }
+      .print()
+
+    env.execute("nyc-traffic")
   }
-
-  val nycTraffic = new RiverSource[TrafficReport]("nyc-traffic", streamIds = Some(Seq("1","204","446")))
-
-  val investigationInterval = {
-    val formatter = ISODateTimeFormat.basicDate().withZone(nycTraffic.meta.timezone)
-    new Interval(DateTime.parse("20150803", formatter), DateTime.parse("20150804", formatter))
-  }
-
-  val anomalyScores = env
-    .addSource(nycTraffic)
-    .filter { report => report.datetime.isBefore(investigationInterval.getEnd) }
-    .keyBy("streamId")
-    .learn(network)
-    .select(inference => (inference.input, inference.anomalyScore))
-
-  val anomalousRoutes = anomalyScores
-    .filter { anomaly => investigationInterval.contains(anomaly._1.datetime) }
-    .filter { anomaly => anomaly._2 >= 0.9 }
-    .print()
-
-  env.execute("nyc-traffic demo")
 }
 
 
