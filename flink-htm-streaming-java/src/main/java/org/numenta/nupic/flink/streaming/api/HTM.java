@@ -44,7 +44,7 @@ public class HTM {
                     INFERENCE_OPERATOR_NAME,
                     (TypeInformation<Inference2<T>>) (TypeInformation<?>) TypeExtractor.getForClass(Inference2.class),
                     new KeyedHTMInferenceOperator<>(input.getExecutionConfig(), input.getType(), isProcessingTime, keySelector, keySerializer, networkFactory)
-            ).name("network");
+            ).name("Learn");
 
         } else {
             // all stream elements will be processed by a single Network instance, hence parallelism -> 1.
@@ -52,7 +52,7 @@ public class HTM {
                     INFERENCE_OPERATOR_NAME,
                     (TypeInformation<Inference2<T>>) (TypeInformation<?>) TypeExtractor.getForClass(Inference2.class),
                     new GlobalHTMInferenceOperator<T>(input.getExecutionConfig(), input.getType(), isProcessingTime, networkFactory)
-            ).name("network").setParallelism(1);
+            ).name("Learn").setParallelism(1);
         }
 
         return new HTMStream<T>(inferenceStream, input.getType());

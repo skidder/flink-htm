@@ -2,6 +2,7 @@ package org.numenta.nupic.flink.streaming.examples.traffic
 
 import de.javakaffee.kryoserializers.jodatime.JodaDateTimeSerializer
 import org.apache.flink.api.java.utils.ParameterTool
+import org.apache.flink.core.fs.FileSystem.WriteMode
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.joda.time.format.ISODateTimeFormat
@@ -71,7 +72,14 @@ object Demo extends TrafficModel {
     val anomalousRoutes = anomalyScores
       .filter { anomaly => investigationInterval.contains(anomaly._1.datetime) }
       .filter { anomaly => anomaly._2 >= 0.9 }
-      .print()
+      .map { anomaly => (anomaly._1.datetime, anomaly._1.streamId, anomaly._2) }
+
+    if (appArgs.has("output")) {
+      anomalousRoutes.writeAsCsv(appArgs.getRequired("output"), writeMode = WriteMode.OVERWRITE).setParallelism(1)
+    }
+    else {
+      anomalousRoutes.print()
+    }
 
     env.execute("nyc-traffic")
   }
