@@ -120,6 +120,9 @@ class RiverSource[T >: Null <: AnyRef: TypeInformation : ClassTag](
     } catch {
       case e: InterruptedException =>
     }
+    finally {
+      pumpThread = None
+    }
   }
 
   /**
