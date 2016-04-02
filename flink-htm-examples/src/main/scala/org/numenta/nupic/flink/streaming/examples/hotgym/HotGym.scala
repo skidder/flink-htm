@@ -51,47 +51,48 @@ object Demo extends HotGymModel {
     val env = {
       val env = StreamExecutionEnvironment.getExecutionEnvironment
       env.getConfig.setGlobalJobParameters(appArgs)
-      env.setParallelism(1) // TODO: don't assume local mode
+      env.setParallelism(1)
       env.addDefaultKryoSerializer(classOf[DateTime], classOf[JodaDateTimeSerializer])
       env
     }
 
     /**
-      * Parse the hotgym csv file as a datastream of tuples.
+      * Parse the hotgym csv file as a datastream of consumption records.
       */
-    def readCsvFile(path: String): DataStream[Tuple2[DateTime, Double]] = {
+    def readCsvFile(path: String): DataStream[Consumption] = {
       env.readTextFile(appArgs.getRequired("input"))
         .map {
           _.split(",") match {
-            case Array(timestamp, consumption) => (LOOSE_DATE_TIME.parseDateTime(timestamp), consumption.toDouble)
+            case Array(timestamp, consumption) => Consumption(LOOSE_DATE_TIME.parseDateTime(timestamp), consumption.toDouble)
           }
         }
     }
 
     val hotGymConsumption: DataStream[Consumption] = readCsvFile(appArgs.getRequired("input"))
-      .map { input => Consumption(input._1, input._2) }
 
-    val inferences = hotGymConsumption
+    val inferences: DataStream[Prediction] = hotGymConsumption
       .learn(network)
       .select { inference => inference }
       .keyBy { _ => None }
       .mapWithState { (inference, state: Option[Double]) =>
 
-        (Prediction(
-          inference.input.timestamp.toString(LOOSE_DATE_TIME),
-          inference.input.consumption,
+        val prediction = Prediction(
+          inference.getInput.timestamp.toString(LOOSE_DATE_TIME),
+          inference.getInput.consumption,
           state match {
             case Some(prediction) => prediction
             case None => 0.0
           },
-          inference.anomalyScore),
+          inference.getAnomalyScore)
 
-          // store the current prediction for the next iteration
-          /*inference.getClassification("consumption").getMostProbableValue(1).asInstanceOf[Double] match {
-            case value if value != 0.0 => Some(value)
-            case _ => Some(state.getOrElse(0.0))
-          }*/
-          Some(inference.input.consumption))
+        // store the prediction about the next value as state for the next iteration,
+        // so that actual vs predicted is a meaningful comparison
+        val predictedConsumption = inference.getClassification("consumption").getMostProbableValue(1).asInstanceOf[Any] match {
+          case value: Double if value != 0.0 => value
+          case _ => state.getOrElse(0.0)
+        }
+
+        (prediction, Some(predictedConsumption))
       }
 
     if (appArgs.has("output")) {
