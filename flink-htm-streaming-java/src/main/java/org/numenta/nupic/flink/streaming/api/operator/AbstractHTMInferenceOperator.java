@@ -109,13 +109,7 @@ public abstract class AbstractHTMInferenceOperator<IN>
         Inference inference = network.computeImmediate(input);
 
         if(inference != null) {
-            Inference2<IN> outRecord = new Inference2<>();
-            outRecord.anomalyScore = inference.getAnomalyScore();
-            outRecord.input = record;
-            outRecord.classifications = new LinkedHashMap<>(inference.getClassifiers().size());
-            for(String fieldName : inference.getClassifiers().keys()) {
-                //outRecord.classifications.put(fieldName, inference.getClassification(fieldName));
-            }
+            Inference2<IN> outRecord = Inference2.fromInference(record, inference);
 
             StreamRecord<Inference2<IN>> streamRecord = new StreamRecord<>(
                     outRecord,
