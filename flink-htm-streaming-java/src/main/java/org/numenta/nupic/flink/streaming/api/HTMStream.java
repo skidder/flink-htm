@@ -43,7 +43,7 @@ public class HTMStream<T> {
      * @param <R> The type of teh resulting elements
      * @return {@Link DataStream} which contains the resulting elements from the inference select function.
      */
-    public <R> DataStream<R> select(final InferenceSelectFunction<T, R> inferenceSelectFunction) {
+    public <R> DataStream<R> select(final MapFunction<Inference2<T>, R> inferenceSelectFunction) {
         TypeInformation<R> returnType = TypeExtractor.getUnaryOperatorReturnType(
                 inferenceSelectFunction,
                 InferenceSelectFunction.class,
@@ -55,24 +55,7 @@ public class HTMStream<T> {
         return select(inferenceSelectFunction, returnType);
     }
 
-    public <R> DataStream<R> select(final InferenceSelectFunction<T, R> inferenceSelectFunction, TypeInformation<R> returnType) {
-        return inferenceStream.map(
-                new InferenceSelectMapper<T, R>(
-                        inferenceStream.getExecutionEnvironment().clean(inferenceSelectFunction))
-        ).returns(returnType);
-    }
-
-    private static class InferenceSelectMapper<T, R> implements MapFunction<Inference2<T>, R> {
-
-        private final InferenceSelectFunction<T, R> inferenceSelectFunction;
-
-        public InferenceSelectMapper(InferenceSelectFunction<T, R> inferenceSelectFunction) {
-            this.inferenceSelectFunction = inferenceSelectFunction;
-        }
-
-        @Override
-        public R map(Inference2<T> value) throws Exception {
-            return inferenceSelectFunction.select(value);
-        }
+    public <R> DataStream<R> select(final MapFunction<Inference2<T>, R> inferenceSelectFunction, TypeInformation<R> returnType) {
+        return inferenceStream.map(inferenceSelectFunction).returns(returnType);
     }
 }

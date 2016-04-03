@@ -52,7 +52,7 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
                 .learn(input, new TestHarness.DayDemoNetworkFactory())
                 .select(new InferenceSelectFunction<TestHarness.DayDemoRecord, Tuple2<Integer,Double>>() {
                     @Override
-                    public Tuple2<Integer,Double> select(Inference2<TestHarness.DayDemoRecord> inference) throws Exception {
+                    public Tuple2<Integer,Double> map(Inference2<TestHarness.DayDemoRecord> inference) throws Exception {
                         return new Tuple2(inference.getInput().dayOfWeek, inference.getAnomalyScore());
                     }
                 });

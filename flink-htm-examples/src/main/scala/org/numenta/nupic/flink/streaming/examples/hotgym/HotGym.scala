@@ -72,9 +72,7 @@ object Demo extends HotGymModel {
 
     val inferences: DataStream[Prediction] = hotGymConsumption
       .learn(network)
-      .select { inference => inference }
-      .keyBy { _ => None }
-      .mapWithState { (inference, state: Option[Double]) =>
+      .selectWithState { (inference, state: Option[Double]) =>
 
         val prediction = Prediction(
           inference.getInput.timestamp.toString(LOOSE_DATE_TIME),
