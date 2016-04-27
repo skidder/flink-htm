@@ -5,8 +5,8 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.scala.ClosureCleaner
 import org.apache.flink.streaming.api.scala.DataStream
 import org.numenta.nupic.flink.streaming.{api => jnupic}
-import org.numenta.nupic.network.Network
-
+import org.numenta.nupic.network.{Inference, Network}
+import org.apache.flink.api.java.tuple.{Tuple2 => FlinkTuple2}
 import scala.reflect.ClassTag
 
 /**
@@ -86,11 +86,11 @@ final class HTMStream[T: TypeInformation : ClassTag](jstream: jnupic.HTMStream[T
     * @tparam R the type of the output elements.
     * @return a new data stream.
     */
-  def select[R: TypeInformation : ClassTag](fun: jnupic.Inference2[T] => R): DataStream[R] = {
+  def select[R: TypeInformation : ClassTag](fun: Tuple2[T,Inference] => R): DataStream[R] = {
     val outType : TypeInformation[R] = implicitly[TypeInformation[R]]
     val selector: jnupic.InferenceSelectFunction[T,R] = new jnupic.InferenceSelectFunction[T,R] {
       val cleanFun = clean(fun)
-      def select(in: jnupic.Inference2[T]): R = cleanFun(in)
+      def select(in: FlinkTuple2[T,Inference]): R = cleanFun(Tuple2(in.f0, in.f1))
     }
     new DataStream[R](jstream.select(selector, outType))
   }

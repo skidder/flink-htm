@@ -3,6 +3,7 @@ package org.numenta.nupic.flink.serialization;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.Serializer;
+import com.esotericsoftware.kryo.io.ByteBufferOutput;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -12,6 +13,8 @@ import org.numenta.nupic.serialize.HTMObjectInput;
 import org.numenta.nupic.serialize.HTMObjectOutput;
 import org.numenta.nupic.serialize.SerialConfig;
 import org.numenta.nupic.serialize.SerializerCore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -21,6 +24,8 @@ import java.io.Serializable;
  *
  */
 public class KryoSerializer<T> extends Serializer<T> implements Serializable {
+
+    protected static final Logger LOGGER = LoggerFactory.getLogger(KryoSerializer.class);
 
     private final SerializerCore serializer = new SerializerCore(SerialConfig.DEFAULT_REGISTERED_TYPES);
 
@@ -33,9 +38,13 @@ public class KryoSerializer<T> extends Serializer<T> implements Serializable {
     @Override
     public void write(Kryo kryo, Output output, T t) {
         try {
+            long total = output.total();
+
             HTMObjectOutput writer = serializer.getObjectOutput(output);
             writer.writeObject(t, t.getClass());
             writer.flush();
+
+            LOGGER.debug("wrote {} bytes", output.total() - total);
         }
         catch(IOException e) {
             throw new KryoException(e);

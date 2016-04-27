@@ -11,6 +11,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.numenta.nupic.network.Inference;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -53,11 +54,11 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
                 .learn(input, new TestHarness.DayDemoNetworkFactory())
                 .select(new InferenceSelectFunction<TestHarness.DayDemoRecord, Tuple3<Integer,Double,Double>>() {
                     @Override
-                    public Tuple3<Integer,Double,Double> select(Inference2<TestHarness.DayDemoRecord> inference) throws Exception {
+                    public Tuple3<Integer,Double,Double> select(Tuple2<TestHarness.DayDemoRecord,Inference> inference) throws Exception {
                         return new Tuple3(
-                                inference.getInput().dayOfWeek,
-                                (Double) inference.getClassification("dayOfWeek").getMostProbableValue(1),
-                                inference.getAnomalyScore());
+                                inference.f0.dayOfWeek,
+                                (Double) inference.f1.getClassification("dayOfWeek").getMostProbableValue(1),
+                                inference.f1.getAnomalyScore());
                     }
                 });
 

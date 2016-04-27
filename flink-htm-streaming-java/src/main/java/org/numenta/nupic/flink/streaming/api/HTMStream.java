@@ -2,9 +2,11 @@ package org.numenta.nupic.flink.streaming.api;
 
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.numenta.nupic.network.Inference;
 
 /**
  * Stream abstraction for HTM inference.  An HTM stream is a stream which emits
@@ -16,11 +18,11 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 public class HTMStream<T> {
 
     // underlying data stream
-    private final DataStream<Inference2<T>> inferenceStream;
+    private final DataStream<Tuple2<T, Inference>> inferenceStream;
     //type information of input type T
     private final TypeInformation<T> inputType;
 
-    HTMStream(final DataStream<Inference2<T>> inferenceStream, final TypeInformation<T> inputType) {
+    HTMStream(final DataStream<Tuple2<T, Inference>> inferenceStream, final TypeInformation<T> inputType) {
         this.inferenceStream = inferenceStream;
         this.inputType = inputType;
     }
@@ -62,7 +64,7 @@ public class HTMStream<T> {
         ).returns(returnType);
     }
 
-    private static class InferenceSelectMapper<T, R> implements MapFunction<Inference2<T>, R> {
+    private static class InferenceSelectMapper<T, R> implements MapFunction<Tuple2<T, Inference>, R> {
 
         private final InferenceSelectFunction<T, R> inferenceSelectFunction;
 
@@ -71,7 +73,7 @@ public class HTMStream<T> {
         }
 
         @Override
-        public R map(Inference2<T> value) throws Exception {
+        public R map(Tuple2<T, Inference> value) throws Exception {
             return inferenceSelectFunction.select(value);
         }
     }

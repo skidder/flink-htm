@@ -77,17 +77,17 @@ object Demo extends HotGymModel {
       .mapWithState { (inference, state: Option[Double]) =>
 
         val prediction = Prediction(
-          inference.getInput.timestamp.toString(LOOSE_DATE_TIME),
-          inference.getInput.consumption,
+          inference._1.timestamp.toString(LOOSE_DATE_TIME),
+          inference._1.consumption,
           state match {
             case Some(prediction) => prediction
             case None => 0.0
           },
-          inference.getAnomalyScore)
+          inference._2.getAnomalyScore)
 
         // store the prediction about the next value as state for the next iteration,
         // so that actual vs predicted is a meaningful comparison
-        val predictedConsumption = inference.getClassification("consumption").getMostProbableValue(1).asInstanceOf[Any] match {
+        val predictedConsumption = inference._2.getClassification("consumption").getMostProbableValue(1).asInstanceOf[Any] match {
           case value: Double if value != 0.0 => value
           case _ => state.getOrElse(0.0)
         }
