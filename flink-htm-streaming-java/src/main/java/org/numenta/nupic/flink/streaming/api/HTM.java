@@ -4,6 +4,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
+import org.numenta.nupic.flink.serialization.KryoSerializer;
 import org.numenta.nupic.flink.streaming.api.operator.GlobalHTMInferenceOperator;
 import org.numenta.nupic.flink.streaming.api.operator.KeyedHTMInferenceOperator;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -29,6 +30,9 @@ public class HTM {
      * @return Resulting HTM stream
      */
     public static <T, K> HTMStream<T> learn(DataStream<T> input, NetworkFactory<T> networkFactory) {
+
+        KryoSerializer.registerTypes(input.getExecutionConfig());
+
         final boolean isProcessingTime = input.getExecutionEnvironment().getStreamTimeCharacteristic() == TimeCharacteristic.ProcessingTime;
 
         final DataStream<Inference2<T>> inferenceStream;

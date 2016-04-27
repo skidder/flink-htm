@@ -1,6 +1,7 @@
 package org.numenta.nupic.flink.streaming.api;
 
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -48,12 +49,15 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
 
         DataStream<TestHarness.DayDemoRecord> input = env.fromCollection(records);
 
-        DataStream<Tuple2<Integer,Double>> result = HTM
+        DataStream<Tuple3<Integer,Double,Double>> result = HTM
                 .learn(input, new TestHarness.DayDemoNetworkFactory())
-                .select(new InferenceSelectFunction<TestHarness.DayDemoRecord, Tuple2<Integer,Double>>() {
+                .select(new InferenceSelectFunction<TestHarness.DayDemoRecord, Tuple3<Integer,Double,Double>>() {
                     @Override
-                    public Tuple2<Integer,Double> select(Inference2<TestHarness.DayDemoRecord> inference) throws Exception {
-                        return new Tuple2(inference.getInput().dayOfWeek, inference.getAnomalyScore());
+                    public Tuple3<Integer,Double,Double> select(Inference2<TestHarness.DayDemoRecord> inference) throws Exception {
+                        return new Tuple3(
+                                inference.getInput().dayOfWeek,
+                                (Double) inference.getClassification("dayOfWeek").getMostProbableValue(1),
+                                inference.getAnomalyScore());
                     }
                 });
 

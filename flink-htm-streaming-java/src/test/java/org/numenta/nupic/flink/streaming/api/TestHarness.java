@@ -93,7 +93,7 @@ public class TestHarness {
             //SpatialPooler specific
             parameters.setParameterByKey(Parameters.KEY.POTENTIAL_RADIUS, 12);//3
             parameters.setParameterByKey(Parameters.KEY.POTENTIAL_PCT, 0.5);//0.5
-            parameters.setParameterByKey(Parameters.KEY.GLOBAL_INHIBITIONS, false);
+            parameters.setParameterByKey(Parameters.KEY.GLOBAL_INHIBITION, false);
             parameters.setParameterByKey(Parameters.KEY.LOCAL_AREA_DENSITY, -1.0);
             parameters.setParameterByKey(Parameters.KEY.NUM_ACTIVE_COLUMNS_PER_INH_AREA, 5.0);
             parameters.setParameterByKey(Parameters.KEY.STIMULUS_THRESHOLD, 1.0);

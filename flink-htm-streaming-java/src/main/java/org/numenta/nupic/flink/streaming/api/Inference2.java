@@ -1,5 +1,6 @@
 package org.numenta.nupic.flink.streaming.api;
 
+import org.numenta.nupic.algorithms.Classification;
 import org.numenta.nupic.network.Inference;
 import org.numenta.nupic.network.Layer;
 
@@ -19,9 +20,9 @@ public class Inference2<IN> implements Serializable {
 
     private final IN input;
 
-    private final Map<String,ClassifierResult2<Object>> classifications;
+    private final Map<String,Classification<Object>> classifications;
 
-    public Inference2(IN input, double anomalyScore, Map<String,ClassifierResult2<Object>> classifications) {
+    public Inference2(IN input, double anomalyScore, Map<String,Classification<Object>> classifications) {
         this.input = input;
         this.anomalyScore = anomalyScore;
         this.classifications = classifications;
@@ -32,20 +33,20 @@ public class Inference2<IN> implements Serializable {
     public IN getInput() { return this.input; }
 
     /**
-     * Returns the most recent {@link ClassifierResult2}
+     * Returns the most recent {@link Classification}
      *
      * @param fieldName the field for which to get the classification.
      * @return the classification result.
      */
-    public ClassifierResult2<Object> getClassification(String fieldName) {
+    public Classification<Object> getClassification(String fieldName) {
         if(classifications == null) throw new IllegalStateException("no classification results are available");
         return classifications.get(fieldName);
     }
 
     public static <IN> Inference2<IN> fromInference(IN input, Inference i) {
-        Map<String, ClassifierResult2<Object>> classifications = new HashMap<>();
+        Map<String, Classification<Object>> classifications = new HashMap<>();
         for(String field : i.getClassifiers().keys()) {
-            classifications.put(field, ClassifierResult2.fromClassifierResult(i.getClassification(field)));
+            classifications.put(field, i.getClassification(field));
         }
         return new Inference2<IN>(input, i.getAnomalyScore(), classifications);
     }
