@@ -18,11 +18,11 @@ import org.numenta.nupic.network.Inference;
 public class HTMStream<T> {
 
     // underlying data stream
-    private final DataStream<Tuple2<T, Inference>> inferenceStream;
+    private final DataStream<Tuple2<T, NetworkInference>> inferenceStream;
     //type information of input type T
     private final TypeInformation<T> inputType;
 
-    HTMStream(final DataStream<Tuple2<T, Inference>> inferenceStream, final TypeInformation<T> inputType) {
+    HTMStream(final DataStream<Tuple2<T, NetworkInference>> inferenceStream, final TypeInformation<T> inputType) {
         this.inferenceStream = inferenceStream;
         this.inputType = inputType;
     }
@@ -64,7 +64,7 @@ public class HTMStream<T> {
         ).returns(returnType);
     }
 
-    private static class InferenceSelectMapper<T, R> implements MapFunction<Tuple2<T, Inference>, R> {
+    private static class InferenceSelectMapper<T, R> implements MapFunction<Tuple2<T, NetworkInference>, R> {
 
         private final InferenceSelectFunction<T, R> inferenceSelectFunction;
 
@@ -73,7 +73,7 @@ public class HTMStream<T> {
         }
 
         @Override
-        public R map(Tuple2<T, Inference> value) throws Exception {
+        public R map(Tuple2<T, NetworkInference> value) throws Exception {
             return inferenceSelectFunction.select(value);
         }
     }

@@ -17,10 +17,10 @@ public interface InferenceSelectFunction<IN, OUT> extends Function, Serializable
     /**
      * Generates a result from the given raw inference.
      *
-     * @param inference Inference emitted by the network
+     * @param inference A tuple combining the input and associated inference emitted by the network
      * @return resulting element
      * @throws Exception This method may throw exceptions.   Throwing an exception
      * will cause the operation to fail and may trigger recovery.
      */
-    OUT select(Tuple2<IN, Inference> inference) throws Exception;
+    OUT select(Tuple2<IN, NetworkInference> inference) throws Exception;
 }

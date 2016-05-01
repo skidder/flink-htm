@@ -54,7 +54,7 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
                 .learn(input, new TestHarness.DayDemoNetworkFactory())
                 .select(new InferenceSelectFunction<TestHarness.DayDemoRecord, Tuple3<Integer,Double,Double>>() {
                     @Override
-                    public Tuple3<Integer,Double,Double> select(Tuple2<TestHarness.DayDemoRecord,Inference> inference) throws Exception {
+                    public Tuple3<Integer,Double,Double> select(Tuple2<TestHarness.DayDemoRecord,NetworkInference> inference) throws Exception {
                         return new Tuple3(
                                 inference.f0.dayOfWeek,
                                 (Double) inference.f1.getClassification("dayOfWeek").getMostProbableValue(1),

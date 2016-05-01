@@ -3,7 +3,6 @@ package org.numenta.nupic.flink.serialization;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.Serializer;
-import com.esotericsoftware.kryo.io.ByteBufferOutput;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -16,20 +15,20 @@ import org.numenta.nupic.serialize.SerializerCore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.Serializable;
+import java.io.*;
 
 /**
  *  Kryo serializer for HTM network and related objects.
  *
  */
-public class KryoSerializer<T> extends Serializer<T> implements Serializable {
+public class KryoSerializer<T extends Persistable> extends Serializer<T> implements Serializable {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(KryoSerializer.class);
 
     private final SerializerCore serializer = new SerializerCore(SerialConfig.DEFAULT_REGISTERED_TYPES);
 
     /**
+     * Write the given instance to the given output.
      *
      * @param kryo      instance of {@link Kryo} object
      * @param output    a Kryo {@link Output} object
@@ -38,13 +37,19 @@ public class KryoSerializer<T> extends Serializer<T> implements Serializable {
     @Override
     public void write(Kryo kryo, Output output, T t) {
         try {
-            long total = output.total();
+            try(ByteArrayOutputStream stream = new ByteArrayOutputStream(4096)) {
 
-            HTMObjectOutput writer = serializer.getObjectOutput(output);
-            writer.writeObject(t, t.getClass());
-            writer.flush();
+                // write the object using the HTM serializer
+                HTMObjectOutput writer = serializer.getObjectOutput(stream);
+                writer.writeObject(t, t.getClass());
+                writer.close();
 
-            LOGGER.debug("wrote {} bytes", output.total() - total);
+                // write the serialized data
+                output.writeInt(stream.size());
+                stream.writeTo(output);
+
+                LOGGER.debug("wrote {} bytes", stream.size());
+            }
         }
         catch(IOException e) {
             throw new KryoException(e);
@@ -52,6 +57,7 @@ public class KryoSerializer<T> extends Serializer<T> implements Serializable {
     }
 
     /**
+     * Read an instance of the given class from the given input.
      *
      * @param kryo      instance of {@link Kryo} object
      * @param input     a Kryo {@link Input}
@@ -60,13 +66,59 @@ public class KryoSerializer<T> extends Serializer<T> implements Serializable {
      */
     @Override
     public T read(Kryo kryo, Input input, Class<T> aClass) {
+
+        // read the serialized data
+        byte[] data = new byte[input.readInt()];
+        input.readBytes(data);
+
         try {
-            HTMObjectInput reader = serializer.getObjectInput(input);
-            T t = (T) reader.readObject(aClass);
-            return t;
+            try(ByteArrayInputStream stream = new ByteArrayInputStream(data)) {
+                HTMObjectInput reader = serializer.getObjectInput(stream);
+                T t = (T) reader.readObject(aClass);
+                return t;
+            }
         }
         catch(Exception e) {
             throw new KryoException(e);
+        }
+    }
+
+    /**
+     * Copy the given instance.
+     * @param kryo instance of {@link Kryo} object
+     * @param original an object to copy.
+     * @return
+     */
+    @Override
+    public T copy(Kryo kryo, T original) {
+        try {
+            try(CopyStream output = new CopyStream(4096)) {
+                HTMObjectOutput writer = serializer.getObjectOutput(output);
+                writer.writeObject(original, original.getClass());
+                writer.close();
+
+                try(InputStream input = output.toInputStream()) {
+                    HTMObjectInput reader = serializer.getObjectInput(input);
+                    T t = (T) reader.readObject(original.getClass());
+                    return t;
+                }
+            }
+        }
+        catch(Exception e) {
+            throw new KryoException(e);
+        }
+    }
+
+    static class CopyStream extends ByteArrayOutputStream {
+        public CopyStream(int size) { super(size); }
+
+        /**
+         * Get an input stream based on the contents of this output stream.
+         * Do not use the output stream after calling this method.
+         * @return an {@link InputStream}
+         */
+        public InputStream toInputStream() {
+            return new ByteArrayInputStream(this.buf, 0, this.count);
         }
     }
 

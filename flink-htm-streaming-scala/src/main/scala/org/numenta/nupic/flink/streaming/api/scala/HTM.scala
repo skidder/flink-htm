@@ -4,6 +4,7 @@ import org.apache.flink.api.common.ExecutionConfig
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.scala.ClosureCleaner
 import org.apache.flink.streaming.api.scala.DataStream
+import org.numenta.nupic.flink.streaming.api.NetworkInference
 import org.numenta.nupic.flink.streaming.{api => jnupic}
 import org.numenta.nupic.network.{Inference, Network}
 import org.apache.flink.api.java.tuple.{Tuple2 => FlinkTuple2}
@@ -28,6 +29,7 @@ object HTM {
 
   /**
     * Create an HTM stream based on the current [[DataStream]].
+    *
     * @param input the input data stream to model.
     * @param factory the factory to create the HTM network.
     * @tparam T the type of the input elements.
@@ -42,6 +44,7 @@ object HTM {
 
   /**
     * Create an HTM stream based on the current [[DataStream]].
+    *
     * @param input the input data stream to model.
     * @param fun the factory to create the HTM network.
     * @tparam T the type of the input elements.
@@ -71,6 +74,7 @@ final class HTMStream[T: TypeInformation : ClassTag](jstream: jnupic.HTMStream[T
 
   /**
     * Select output elements from the HTM stream.
+    *
     * @param selector the select function.
     * @tparam R the type of the output elements.
     * @return a new data stream.
@@ -82,15 +86,16 @@ final class HTMStream[T: TypeInformation : ClassTag](jstream: jnupic.HTMStream[T
 
   /**
     * Select output elements from the HTM stream.
+    *
     * @param fun the select function.
     * @tparam R the type of the output elements.
     * @return a new data stream.
     */
-  def select[R: TypeInformation : ClassTag](fun: Tuple2[T,Inference] => R): DataStream[R] = {
+  def select[R: TypeInformation : ClassTag](fun: Tuple2[T, NetworkInference] => R): DataStream[R] = {
     val outType : TypeInformation[R] = implicitly[TypeInformation[R]]
     val selector: jnupic.InferenceSelectFunction[T,R] = new jnupic.InferenceSelectFunction[T,R] {
       val cleanFun = clean(fun)
-      def select(in: FlinkTuple2[T,Inference]): R = cleanFun(Tuple2(in.f0, in.f1))
+      def select(in: FlinkTuple2[T,NetworkInference]): R = cleanFun(Tuple2(in.f0, in.f1))
     }
     new DataStream[R](jstream.select(selector, outType))
   }

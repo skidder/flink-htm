@@ -38,10 +38,10 @@ public class HTM {
 
         final boolean isProcessingTime = input.getExecutionEnvironment().getStreamTimeCharacteristic() == TimeCharacteristic.ProcessingTime;
 
-        final TypeInformation<Inference> inferenceTypeInfo = TypeExtractor.getForClass(Inference.class);
-        final TypeInformation<Tuple2<T,Inference>> inferenceStreamTypeInfo = new TupleTypeInfo<>(input.getType(), inferenceTypeInfo);
+        final TypeInformation<NetworkInference> inferenceTypeInfo = TypeExtractor.getForClass(NetworkInference.class);
+        final TypeInformation<Tuple2<T,NetworkInference>> inferenceStreamTypeInfo = new TupleTypeInfo<>(input.getType(), inferenceTypeInfo);
 
-        final DataStream<Tuple2<T, Inference>> inferenceStream;
+        final DataStream<Tuple2<T, NetworkInference>> inferenceStream;
 
         if (input instanceof KeyedStream) {
             // each key will be processed by a dedicated Network instance.
