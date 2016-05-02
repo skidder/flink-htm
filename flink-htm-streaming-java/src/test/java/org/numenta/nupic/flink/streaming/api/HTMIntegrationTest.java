@@ -103,6 +103,37 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
         env.execute();
     }
 
+    /**
+     * Test the checkpoint behavior of the HTM operator.
+     * @throws Exception
+     */
+    @Test
+    public void testCheckpointWithKeyedStream() throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        env.enableCheckpointing(5000);
+        env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
+
+        DataStream<TestHarness.DayDemoRecord> source = env
+                .addSource(new DayDemoRecordSourceFunction(2, true))
+                .keyBy("dayOfWeek");
+
+        DataStream<Tuple3<Integer,Double,Double>> result =
+                HTM.learn(source, new TestHarness.DayDemoNetworkFactory())
+                        .select(new InferenceSelectFunction<TestHarness.DayDemoRecord, Tuple3<Integer,Double,Double>>() {
+                            @Override
+                            public Tuple3<Integer,Double,Double> select(Tuple2<TestHarness.DayDemoRecord,NetworkInference> inference) throws Exception {
+                                return new Tuple3(
+                                        inference.f0.dayOfWeek,
+                                        (Double) inference.f1.getClassification("dayOfWeek").getMostProbableValue(1),
+                                        inference.f1.getAnomalyScore());
+                            }
+                        });
+
+        result.print();
+
+        env.execute();
+    }
 
     private static class DayDemoRecordSourceFunction extends TestSourceFunction<TestHarness.DayDemoRecord> {
 
