@@ -6,6 +6,8 @@ import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.util.FieldAccessor;
 import org.numenta.nupic.Persistable;
 import org.numenta.nupic.network.Network;
 import org.numenta.nupic.serialize.HTMObjectInput;
@@ -16,6 +18,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.lang.reflect.Field;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  *  Kryo serializer for HTM network and related objects.
@@ -37,6 +43,8 @@ public class KryoSerializer<T extends Persistable> extends Serializer<T> impleme
     @Override
     public void write(Kryo kryo, Output output, T t) {
         try {
+            preSerialize(t);
+
             try(ByteArrayOutputStream stream = new ByteArrayOutputStream(4096)) {
 
                 // write the object using the HTM serializer
@@ -75,6 +83,9 @@ public class KryoSerializer<T extends Persistable> extends Serializer<T> impleme
             try(ByteArrayInputStream stream = new ByteArrayInputStream(data)) {
                 HTMObjectInput reader = serializer.getObjectInput(stream);
                 T t = (T) reader.readObject(aClass);
+
+                postDeSerialize(t);
+
                 return t;
             }
         }
@@ -92,6 +103,8 @@ public class KryoSerializer<T extends Persistable> extends Serializer<T> impleme
     @Override
     public T copy(Kryo kryo, T original) {
         try {
+            preSerialize(original);
+
             try(CopyStream output = new CopyStream(4096)) {
                 HTMObjectOutput writer = serializer.getObjectOutput(output);
                 writer.writeObject(original, original.getClass());
@@ -100,6 +113,9 @@ public class KryoSerializer<T extends Persistable> extends Serializer<T> impleme
                 try(InputStream input = output.toInputStream()) {
                     HTMObjectInput reader = serializer.getObjectInput(input);
                     T t = (T) reader.readObject(original.getClass());
+
+                    postDeSerialize(t);
+
                     return t;
                 }
             }
@@ -123,17 +139,74 @@ public class KryoSerializer<T extends Persistable> extends Serializer<T> impleme
     }
 
     /**
+     * The HTM serializer handles the Persistable callbacks automatically, but
+     * this method is for any additional actions to be taken.
+     * @param t the instance to be serialized.
+     */
+    protected void preSerialize(T t) {
+    }
+
+    /**
+     * The HTM serializer handles the Persistable callbacks automatically, but
+     * this method is for any additional actions to be taken.
+     * @param t the instance newly deserialized.
+     */
+    protected void postDeSerialize(T t) {
+    }
+
+    /**
      * Register the HTM types with the Kryo serializer.
      * @param config
      */
     public static void registerTypes(ExecutionConfig config) {
         for(Class<?> c : SerialConfig.DEFAULT_REGISTERED_TYPES) {
-            config.registerTypeWithKryoSerializer(c, (Class<? extends Serializer<?>>) (Class<?>) KryoSerializer.class);
+            Class<?> serializerClass = DEFAULT_SERIALIZERS.getOrDefault(c, (Class<?>) KryoSerializer.class);
+            config.registerTypeWithKryoSerializer(c, (Class<? extends Serializer<?>>) serializerClass);
         }
         for(Class<?> c : KryoSerializer.ADDITIONAL_REGISTERED_TYPES) {
-            config.registerTypeWithKryoSerializer(c, (Class<? extends Serializer<?>>) (Class<?>) KryoSerializer.class);
+            Class<?> serializerClass = DEFAULT_SERIALIZERS.getOrDefault(c, (Class<?>) KryoSerializer.class);
+            config.registerTypeWithKryoSerializer(c, (Class<? extends Serializer<?>>) serializerClass);
         }
     }
 
     static final Class<?>[] ADDITIONAL_REGISTERED_TYPES = { Network.class };
+
+    /**
+     * A map of serializers for various classes.
+     */
+    static final Map<Class<?>,Class<?>> DEFAULT_SERIALIZERS = Stream.of(
+            new Tuple2<>(Network.class, NetworkSerializer.class)
+    ).collect(Collectors.toMap(kv -> kv.f0, kv -> kv.f1));
+
+
+    public static class NetworkSerializer extends KryoSerializer<Network> {
+
+        private final static Field shouldDoHaltField;
+
+        static {
+            try {
+                shouldDoHaltField = Network.class.getDeclaredField("shouldDoHalt");
+                shouldDoHaltField.setAccessible(true);
+            } catch (NoSuchFieldException e) {
+                throw new UnsupportedOperationException("unable to locate Network::shouldDoHalt", e);
+            }
+
+        }
+
+        @Override
+        protected void preSerialize(Network network) {
+            super.preSerialize(network);
+            try {
+                // issue: HTM.java #417
+                shouldDoHaltField.set(network, false);
+            } catch (IllegalAccessException e) {
+                throw new UnsupportedOperationException("unable to set Network::shouldDoHalt", e);
+            }
+        }
+
+        @Override
+        protected void postDeSerialize(Network network) {
+            super.postDeSerialize(network);
+        }
+    }
 }
