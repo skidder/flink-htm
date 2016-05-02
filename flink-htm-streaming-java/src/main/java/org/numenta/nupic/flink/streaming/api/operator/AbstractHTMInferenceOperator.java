@@ -7,8 +7,9 @@ import org.apache.flink.api.common.accumulators.IntCounter;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.numenta.nupic.flink.streaming.api.Inference2;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.numenta.nupic.flink.streaming.api.NetworkFactory;
+import org.numenta.nupic.flink.streaming.api.NetworkInference;
 import org.numenta.nupic.flink.streaming.api.codegen.GenerateEncoderInputFunction;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
@@ -33,8 +34,8 @@ import java.util.Map;
  * @author Eron Wright
  */
 public abstract class AbstractHTMInferenceOperator<IN>
-        extends AbstractStreamOperator<Inference2<IN>>
-        implements OneInputStreamOperator<IN, Inference2<IN>> {
+        extends AbstractStreamOperator<Tuple2<IN, NetworkInference>>
+        implements OneInputStreamOperator<IN, Tuple2<IN, NetworkInference>> {
 
     protected static final Logger LOG = LoggerFactory.getLogger(AbstractHTMInferenceOperator.class);
 
@@ -109,10 +110,9 @@ public abstract class AbstractHTMInferenceOperator<IN>
         Inference inference = network.computeImmediate(input);
 
         if(inference != null) {
-            Inference2<IN> outRecord = Inference2.fromInference(record, inference);
-
-            StreamRecord<Inference2<IN>> streamRecord = new StreamRecord<>(
-                    outRecord,
+            NetworkInference outputInference = NetworkInference.fromInference(inference);
+            StreamRecord<Tuple2<IN,NetworkInference>> streamRecord = new StreamRecord<>(
+                    new Tuple2(record, outputInference),
                     timestamp);
             output.collect(streamRecord);
         }

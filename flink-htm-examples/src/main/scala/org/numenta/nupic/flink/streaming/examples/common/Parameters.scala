@@ -25,7 +25,7 @@ object NetworkDemoParameters {
         //SpatialPooler specific
         POTENTIAL_RADIUS -> 12, //3
         POTENTIAL_PCT -> 0.5, //0.5
-        GLOBAL_INHIBITIONS -> false,
+        GLOBAL_INHIBITION -> false,
         LOCAL_AREA_DENSITY -> -1.0,
         NUM_ACTIVE_COLUMNS_PER_INH_AREA -> 5.0,
         STIMULUS_THRESHOLD -> 1.0,
@@ -49,7 +49,7 @@ object NetworkDemoParameters {
         PERMANENCE_DECREMENT -> 0.05,
         ACTIVATION_THRESHOLD -> 4))
       .union(Parameters(
-        GLOBAL_INHIBITIONS -> true,
+        GLOBAL_INHIBITION -> true,
         COLUMN_DIMENSIONS -> Array(2048),
         CELLS_PER_COLUMN -> 32,
         NUM_ACTIVE_COLUMNS_PER_INH_AREA -> 40.0,
@@ -80,7 +80,7 @@ trait WorkshopAnomalyParameters {
       // spParams
       POTENTIAL_PCT -> 0.8,
       COLUMN_DIMENSIONS -> Array(2048),
-      GLOBAL_INHIBITIONS -> true,
+      GLOBAL_INHIBITION -> true,
       /* inputWidth */
       MAX_BOOST -> 1.0,
       NUM_ACTIVE_COLUMNS_PER_INH_AREA -> 40,

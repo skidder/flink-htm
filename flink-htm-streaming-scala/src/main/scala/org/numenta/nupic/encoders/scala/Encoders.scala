@@ -21,7 +21,6 @@ object DateEncoder {
   def apply(): jencoders.DateEncoder.Builder = {
     jencoders.DateEncoder.builder()
       .defaults
-      .formatter(ISODateTimeFormat.dateTime())
   }
 }
 

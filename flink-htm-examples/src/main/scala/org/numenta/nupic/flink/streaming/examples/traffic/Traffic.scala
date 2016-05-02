@@ -67,7 +67,7 @@ object Demo extends TrafficModel {
       .filter { report => report.datetime.isBefore(investigationInterval.getEnd) }
       .keyBy("streamId")
       .learn(network)
-      .select(inference => (inference.getInput, inference.getAnomalyScore))
+      .select(inference => (inference._1, inference._2.getAnomalyScore))
 
     val anomalousRoutes = anomalyScores
       .filter { anomaly => investigationInterval.contains(anomaly._1.datetime) }
