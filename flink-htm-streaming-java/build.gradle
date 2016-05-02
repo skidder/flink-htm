@@ -19,7 +19,7 @@ dependencies {
     compile 'org.slf4j:slf4j-api:1.7.13'
 
     // htm.java
-    compile 'org.numenta:htm.java:0.6.7'
+    compile 'org.numenta:htm.java:0.6.8'
 
     // flink
     compile 'org.apache.flink:flink-java:1.0.0'

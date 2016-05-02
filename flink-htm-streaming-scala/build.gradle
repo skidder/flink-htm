@@ -21,7 +21,7 @@ dependencies {
     compile 'org.scala-lang:scala-library:2.11.7'
 
     // htm.java
-    compile 'org.numenta:htm.java:0.6.5'
+    compile 'org.numenta:htm.java:0.6.8'
 
     // flink
     compile 'org.apache.flink:flink-scala_2.11:1.0.0'
