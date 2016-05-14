@@ -10,6 +10,7 @@ import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.typeutils.runtime.kryo.KryoSerializer;
 import org.numenta.nupic.flink.streaming.api.NetworkFactory;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.numenta.nupic.flink.streaming.api.ResetFunction;
 import org.numenta.nupic.network.Network;
 
 import java.util.HashSet;
@@ -45,8 +46,9 @@ public class KeyedHTMInferenceOperator<IN, KEY> extends AbstractHTMInferenceOper
             boolean isProcessingTime,
             KeySelector<IN, KEY> keySelector,
             TypeSerializer<KEY> keySerializer,
-            NetworkFactory<IN> networkFactory) {
-        super(executionConfig, inputType, isProcessingTime, networkFactory);
+            NetworkFactory<IN> networkFactory,
+            ResetFunction<IN> resetFunction) {
+        super(executionConfig, inputType, isProcessingTime, networkFactory, resetFunction);
 
         this.keySelector = keySelector;
         this.keySerializer = keySerializer;

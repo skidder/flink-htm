@@ -10,6 +10,7 @@ import org.apache.flink.runtime.state.StateHandle;
 import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.streaming.runtime.tasks.StreamTaskState;
 import org.numenta.nupic.flink.streaming.api.NetworkFactory;
+import org.numenta.nupic.flink.streaming.api.ResetFunction;
 import org.numenta.nupic.network.Network;
 
 /**
@@ -33,8 +34,9 @@ public class GlobalHTMInferenceOperator<IN> extends AbstractHTMInferenceOperator
             final ExecutionConfig executionConfig,
             final TypeInformation<IN> inputType,
             boolean isProcessingTime,
-            NetworkFactory<IN> networkFactory) {
-        super(executionConfig, inputType, isProcessingTime, networkFactory);
+            NetworkFactory<IN> networkFactory,
+            ResetFunction<IN> resetFunction) {
+        super(executionConfig, inputType, isProcessingTime, networkFactory, resetFunction);
 
         this.networkFactory = networkFactory;
 

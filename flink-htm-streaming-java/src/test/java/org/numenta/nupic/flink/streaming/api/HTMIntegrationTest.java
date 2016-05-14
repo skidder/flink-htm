@@ -14,7 +14,6 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -53,6 +52,12 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
 
         DataStream<Tuple3<Integer,Double,Double>> result = HTM
                 .learn(input, new TestHarness.DayDemoNetworkFactory())
+                .resetOn(new ResetFunction<TestHarness.DayDemoRecord>() {
+                    @Override
+                    public boolean reset(TestHarness.DayDemoRecord value) throws Exception {
+                        return value.dayOfWeek == 0;
+                    }
+                })
                 .select(new InferenceSelectFunction<TestHarness.DayDemoRecord, Tuple3<Integer,Double,Double>>() {
                     @Override
                     public Tuple3<Integer,Double,Double> select(Tuple2<TestHarness.DayDemoRecord,NetworkInference> inference) throws Exception {
@@ -83,7 +88,7 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
 
         DataStream<TestHarness.DayDemoRecord> source = env
-                .addSource(new DayDemoRecordSourceFunction(5, true))
+                .addSource(new TestHarness.DayDemoRecordSourceFunction(5, true))
                 .broadcast();
 
         DataStream<Tuple3<Integer,Double,Double>> result =
@@ -115,7 +120,7 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
 
         DataStream<TestHarness.DayDemoRecord> source = env
-                .addSource(new DayDemoRecordSourceFunction(2, true))
+                .addSource(new TestHarness.DayDemoRecordSourceFunction(2, true))
                 .keyBy("dayOfWeek");
 
         DataStream<Tuple3<Integer,Double,Double>> result =
@@ -135,34 +140,4 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
         env.execute();
     }
 
-    private static class DayDemoRecordSourceFunction extends TestSourceFunction<TestHarness.DayDemoRecord> {
-
-        private volatile int dayOfWeek = 0;
-
-        public DayDemoRecordSourceFunction(int numCheckpoints, boolean failAfterCheckpoint) {
-            super(numCheckpoints, failAfterCheckpoint);
-        }
-
-        @Override
-        protected Supplier<TestHarness.DayDemoRecord> generate() {
-            return new Supplier<TestHarness.DayDemoRecord>() {
-                @Override
-                public TestHarness.DayDemoRecord get() {
-                    return new TestHarness.DayDemoRecord(dayOfWeek++ % 7);
-                }
-            };
-        }
-
-        @Override
-        public Long snapshotState(long checkpointId, long checkpointTimestamp) throws Exception {
-            super.snapshotState(checkpointId, checkpointTimestamp);
-            return Long.valueOf(dayOfWeek);
-        }
-
-        @Override
-        public void restoreState(Long state) throws Exception {
-            super.restoreState(state);
-            dayOfWeek = state.intValue();
-        }
-    }
 }
