@@ -7,7 +7,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.streaming.util.FieldAccessor;
 import org.numenta.nupic.Persistable;
 import org.numenta.nupic.network.Network;
 import org.numenta.nupic.serialize.HTMObjectInput;
@@ -18,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -174,39 +172,7 @@ public class KryoSerializer<T extends Persistable> extends Serializer<T> impleme
     /**
      * A map of serializers for various classes.
      */
-    static final Map<Class<?>,Class<?>> DEFAULT_SERIALIZERS = Stream.of(
-            new Tuple2<>(Network.class, NetworkSerializer.class)
+    static final Map<Class<?>,Class<?>> DEFAULT_SERIALIZERS = Stream.<Tuple2<Class,Class>>of(
+            // new Tuple2<>(Network.class, NetworkSerializer.class)
     ).collect(Collectors.toMap(kv -> kv.f0, kv -> kv.f1));
-
-
-    public static class NetworkSerializer extends KryoSerializer<Network> {
-
-        private final static Field shouldDoHaltField;
-
-        static {
-            try {
-                shouldDoHaltField = Network.class.getDeclaredField("shouldDoHalt");
-                shouldDoHaltField.setAccessible(true);
-            } catch (NoSuchFieldException e) {
-                throw new UnsupportedOperationException("unable to locate Network::shouldDoHalt", e);
-            }
-
-        }
-
-        @Override
-        protected void preSerialize(Network network) {
-            super.preSerialize(network);
-            try {
-                // issue: HTM.java #417
-                shouldDoHaltField.set(network, false);
-            } catch (IllegalAccessException e) {
-                throw new UnsupportedOperationException("unable to set Network::shouldDoHalt", e);
-            }
-        }
-
-        @Override
-        protected void postDeSerialize(Network network) {
-            super.postDeSerialize(network);
-        }
-    }
 }

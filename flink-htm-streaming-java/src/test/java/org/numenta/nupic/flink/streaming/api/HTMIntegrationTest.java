@@ -79,11 +79,11 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
     public void testCheckpointing1() throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
-        env.enableCheckpointing(5000);
+        env.enableCheckpointing(1000);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
 
         DataStream<TestHarness.DayDemoRecord> source = env
-                .addSource(new DayDemoRecordSourceFunction(2, true))
+                .addSource(new DayDemoRecordSourceFunction(5, true))
                 .broadcast();
 
         DataStream<Tuple3<Integer,Double,Double>> result =
