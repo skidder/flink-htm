@@ -1,5 +1,6 @@
 package org.numenta.nupic.flink.streaming.api;
 
+import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
@@ -53,6 +54,12 @@ public class HTMIntegrationTest extends StreamingMultipleProgramsTestBase {
 
         DataStream<Tuple3<Integer,Double,Double>> result = HTM
                 .learn(input, new TestHarness.DayDemoNetworkFactory())
+                .resetOn(new ResetFunction<TestHarness.DayDemoRecord>() {
+                    @Override
+                    public boolean reset(TestHarness.DayDemoRecord value) throws Exception {
+                        return value.dayOfWeek == 0;
+                    }
+                })
                 .select(new InferenceSelectFunction<TestHarness.DayDemoRecord, Tuple3<Integer,Double,Double>>() {
                     @Override
                     public Tuple3<Integer,Double,Double> select(Tuple2<TestHarness.DayDemoRecord,NetworkInference> inference) throws Exception {

@@ -4,12 +4,15 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.accumulators.AverageAccumulator;
 import org.apache.flink.api.common.accumulators.Histogram;
 import org.apache.flink.api.common.accumulators.IntCounter;
+import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.api.operators.AbstractUdfStreamOperator;
 import org.numenta.nupic.flink.streaming.api.NetworkFactory;
 import org.numenta.nupic.flink.streaming.api.NetworkInference;
+import org.numenta.nupic.flink.streaming.api.ResetFunction;
 import org.numenta.nupic.flink.streaming.api.codegen.GenerateEncoderInputFunction;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
@@ -34,7 +37,7 @@ import java.util.Map;
  * @author Eron Wright
  */
 public abstract class AbstractHTMInferenceOperator<IN>
-        extends AbstractStreamOperator<Tuple2<IN, NetworkInference>>
+        extends AbstractUdfStreamOperator<Tuple2<IN, NetworkInference>, ResetFunction<IN>>
         implements OneInputStreamOperator<IN, Tuple2<IN, NetworkInference>> {
 
     protected static final Logger LOG = LoggerFactory.getLogger(AbstractHTMInferenceOperator.class);
@@ -56,8 +59,11 @@ public abstract class AbstractHTMInferenceOperator<IN>
             final ExecutionConfig executionConfig,
             final TypeInformation<IN> inputType,
             final boolean isProcessingTime,
-            final NetworkFactory<IN> networkFactory
+            final NetworkFactory<IN> networkFactory,
+            final ResetFunction<IN> resetFunction
     ) {
+        super(resetFunction != null ? resetFunction : NEVER_RESET_FUNCTION);
+
         this.executionConfig = executionConfig;
         this.inputType = inputType;
         this.isProcessingTime = isProcessingTime;
@@ -105,7 +111,13 @@ public abstract class AbstractHTMInferenceOperator<IN>
         output.emitWatermark(mark);
     }
 
-    protected void processInput(Network network, IN record, long timestamp) {
+    protected void processInput(Network network, IN record, long timestamp) throws Exception {
+
+        if(userFunction.reset(record)) {
+            network.reset();
+            LOG.debug("network reset");
+        }
+
         Object input = convertToInput(record, timestamp);
         Inference inference = network.computeImmediate(input);
 
@@ -153,4 +165,11 @@ public abstract class AbstractHTMInferenceOperator<IN>
         Map<String, Object> inputMap = inputFunction.map(record);
         return inputMap;
     }
+
+    private static final ResetFunction NEVER_RESET_FUNCTION = new ResetFunction() {
+        @Override
+        public boolean reset(Object value) throws Exception {
+            return false;
+        }
+    };
 }
