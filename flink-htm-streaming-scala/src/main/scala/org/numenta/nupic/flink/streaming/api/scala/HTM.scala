@@ -4,7 +4,7 @@ import org.apache.flink.api.common.ExecutionConfig
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.scala.ClosureCleaner
 import org.apache.flink.streaming.api.scala.DataStream
-import org.numenta.nupic.flink.streaming.api.NetworkInference
+import org.numenta.nupic.flink.streaming.api.{ResetFunction, NetworkInference}
 import org.numenta.nupic.flink.streaming.{api => jnupic}
 import org.numenta.nupic.network.{Inference, Network}
 import org.apache.flink.api.java.tuple.{Tuple2 => FlinkTuple2}
@@ -23,7 +23,7 @@ object HTM {
     f
   }
 
-  private def wrapStream[T: TypeInformation : ClassTag](stream: jnupic.HTMStream[T]): HTMStream[T] = {
+  private[nupic] def wrapStream[T: TypeInformation : ClassTag](stream: jnupic.HTMStream[T]): HTMStream[T] = {
     new HTMStream(stream)
   }
 
@@ -71,6 +71,35 @@ final class HTMStream[T: TypeInformation : ClassTag](jstream: jnupic.HTMStream[T
   import HTM._
 
   implicit val config = jstream.getExecutionEnvironment.getConfig
+
+  /**
+    * Applies a reset function to input elements to determine when to reset a temporal sequence.
+    *
+    * The reset logic is applied <i>before</i> the input element is processed by the network.
+    *
+    * @param fun the function to apply.
+    * @return the HTM stream.
+    */
+  def resetOn(fun: jnupic.ResetFunction[T]): HTMStream[T] = {
+    val cleanFun = clean(fun)
+    HTM.wrapStream(jstream.resetOn(cleanFun))
+  }
+
+  /**
+    * Applies a reset function to input elements to determine when to reset a temporal sequence.
+    *
+    * The reset logic is applied <i>before</i> the input element is processed by the network.
+    *
+    * @param fun the function to apply.
+    * @return the HTM stream.
+    */
+  def resetOn(fun: T => Boolean): HTMStream[T] = {
+    val jfun: jnupic.ResetFunction[T] = new jnupic.ResetFunction[T] {
+      val cleanFun = clean(fun)
+      def reset(in: T): Boolean = cleanFun(in)
+    }
+    HTM.wrapStream(jstream.resetOn(jfun))
+  }
 
   /**
     * Select output elements from the HTM stream.

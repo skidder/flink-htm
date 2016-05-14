@@ -5,6 +5,7 @@ import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.streaming.api.scala._
 import org.numenta.nupic.network.Network
 import reflect.ClassTag
+import org.numenta.nupic.flink.streaming.{api => jnupic}
 
 /**
   * Provides implicit conversions for HTM.
@@ -20,11 +21,20 @@ package object scala {
 
     /**
       * Create an HTM stream based on the current [[DataStream]].
-      * @param network the network to use.
+      * @param network a function producing the network to use.
       * @return an HTM stream.
       */
     def learn(network: AnyRef => Network): scala.HTMStream[T] = {
       HTM.learn(dataStream, network)
+    }
+
+    /**
+      * Create an HTM stream based on the current [[DataStream]].
+      * @param factory a factory producing the network to use.
+      * @return an HTM stream.
+      */
+    def learn(factory: jnupic.NetworkFactory[T]): scala.HTMStream[T] = {
+      HTM.learn(dataStream, factory)
     }
   }
 }

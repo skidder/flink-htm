@@ -11,6 +11,7 @@ import org.numenta.nupic.util.MersenneTwister;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static org.numenta.nupic.algorithms.Anomaly.KEY_MODE;
 
@@ -24,6 +25,37 @@ public class TestHarness {
 
         public DayDemoRecord() {}
         public DayDemoRecord(int dayOfWeek) { this.dayOfWeek = dayOfWeek; }
+    }
+
+    public static class DayDemoRecordSourceFunction extends TestSourceFunction<DayDemoRecord> {
+
+        private volatile int dayOfWeek = 0;
+
+        public DayDemoRecordSourceFunction(int numCheckpoints, boolean failAfterCheckpoint) {
+            super(numCheckpoints, failAfterCheckpoint);
+        }
+
+        @Override
+        protected Supplier<DayDemoRecord> generate() {
+            return new Supplier<DayDemoRecord>() {
+                @Override
+                public DayDemoRecord get() {
+                    return new DayDemoRecord(dayOfWeek++ % 7);
+                }
+            };
+        }
+
+        @Override
+        public Long snapshotState(long checkpointId, long checkpointTimestamp) throws Exception {
+            super.snapshotState(checkpointId, checkpointTimestamp);
+            return Long.valueOf(dayOfWeek);
+        }
+
+        @Override
+        public void restoreState(Long state) throws Exception {
+            super.restoreState(state);
+            dayOfWeek = state.intValue();
+        }
     }
 
     public static class DayDemoNetworkFactory implements NetworkFactory<TestHarness.DayDemoRecord> {
