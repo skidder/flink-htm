@@ -8,6 +8,10 @@ archivesBaseName = 'flink-htm-scala_2.11'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+evaluationDependsOn(':flink-htm-streaming-java')
+
+compileTestJava.dependsOn tasks.getByPath(':flink-htm-streaming-java:testClasses')
+
 jar {
     manifest {
         attributes 'Implementation-Title': 'flink-htm-scala', 'Implementation-Version': '0.1-SNAPSHOT'
@@ -31,6 +35,8 @@ dependencies {
     // spray http client
     compile 'io.spray:spray-client_2.11:1.3.3'
     compile 'io.spray:spray-json_2.11:1.3.2'
+
+    testCompile files(project(':flink-htm-streaming-java').sourceSets.test.output.classesDir)
 
     testCompile "org.scalatest:scalatest_2.11:2.2.6"
 
