@@ -72,8 +72,8 @@ public class GlobalHTMInferenceOperator<IN> extends AbstractHTMInferenceOperator
 
     @Override
     @SuppressWarnings("unchecked")
-    public void restoreState(StreamTaskState state, long recoveryTimestamp) throws Exception {
-        super.restoreState(state, recoveryTimestamp);
+    public void restoreState(StreamTaskState state) throws Exception {
+        super.restoreState(state);
 
         final StateHandle<DataInputView> handle = (StateHandle<DataInputView>) state.getOperatorState();
         final DataInputView iv = handle.getState(getUserCodeClassloader());
